@@ -36,7 +36,7 @@ app.post('/todos', (req, res) => {
       id : todoNextId,
       description: body.description,
       completed: body.completed ? true : false
-    }
+    };
     todos.push(todo);
     todoNextId++;
     res.status(201).json({success:true, message: "todo added"});
@@ -44,6 +44,20 @@ app.post('/todos', (req, res) => {
     res.status('400').json({success:false, message:"please add a description"});
   }
 })
+
+app.delete('/todos/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  let todo = _.findWhere(todos, {id: id});
+  console.log(todo)
+  if(todo) {
+    todos = _.without(todos, todo);
+    res.status(200).json({success:true, message: "todo deleted"});
+  }else {
+    res.status(404).json({success:false, message: "todo with that is not found"});
+  }
+})
+
+
 
 app.listen(port, () => {
   console.log('express is listening on port ' + port);
