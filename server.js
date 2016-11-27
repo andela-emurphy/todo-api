@@ -1,5 +1,6 @@
 const app = require('express')(),
   bodyParser = require('body-parser'),
+  _ = require('underscore'),
   port = process.env.PORT || 2000;
 
 let todos = [],
@@ -17,15 +18,9 @@ app.get('/todos', (req, res) => {
 
 app.get('/todos/:id', (req, res) => {
   const id = parseInt(req.params.id);
-  let found;
-  todos.forEach(todo => {
-    if (todo.id === id) {
-      found = todo;
-      return true;
-    }
-  })
-  if (found) {
-    return res.status(200).json(found);
+  let foundTodo = _.findWhere(todos, {id: id});
+  if (foundTodo) {
+    return res.status(200).json(foundTodo);
   } else {
     return res.status(404).json({
       success: false,
@@ -35,19 +30,19 @@ app.get('/todos/:id', (req, res) => {
 })
 
 app.post('/todos', (req, res) => {
-  if (req.body.description){
-     let todo = {
-      id: todoNextId,
-      description: req.body.description,
-      completed: req.body.completed  || false
-    };
+  let body = _.pick(req.body, 'description', 'completed');
+  if (body.description && body.description.trim().length !== 0) {
+    let todo  = {
+      id : todoNextId,
+      description: body.description,
+      completed: body.completed ? true : false
+    }
     todos.push(todo);
     todoNextId++;
     res.status(201).json({success:true, message: "todo added"});
   }else{
     res.status('400').json({success:false, message:"please add a description"});
   }
-   
 })
 
 app.listen(port, () => {
