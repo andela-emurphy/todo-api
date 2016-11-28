@@ -8,6 +8,8 @@ let todos = [],
 app.use(bodyParser.json());
 // app.use(bodyParser.urlencoded({ extended : true }))
 
+
+
 app.get('/', (req, res) => {
   res.send('</h1>Hello world</h1>');
 })
@@ -21,6 +23,14 @@ app.get('/todos', (req, res) => {
     } else if( queryParams.completed === 'false') {
       filteredtodos = _.where(filteredtodos, { completed: false });
     }
+  }
+  if (queryParams.hasOwnProperty('q')) {
+    filteredtodos = _.filter(filteredtodos, (todo) => {
+      if(todo.description.toLowerCase()
+        .indexOf(queryParams.q.toLowerCase()) > -1) {
+        return todo
+      }
+    })
   }
     res.status(200).json(filteredtodos);
 })
