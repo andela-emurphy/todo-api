@@ -13,12 +13,30 @@ app.get('/', (req, res) => {
 })
 
 app.get('/todos', (req, res) => {
-  res.status(200).json(todos);
+  let queryParams = req.query;
+  let filteredtodos = todos
+  if (queryParams.hasOwnProperty('completed')) {
+    if( queryParams.completed === 'true') {
+      filteredtodos = _.where(filteredtodos, { completed: true });
+    } else if( queryParams.completed === 'false') {
+      filteredtodos = _.where(filteredtodos, { completed: false });
+    }
+  }
+    res.status(200).json(filteredtodos);
 })
+
+
+function test () {
+  if( queryParams.completed === 'true') {
+    filteredtodos = _.where(filteredtodos, { completed: true });
+  }
+}
 
 app.get('/todos/:id', (req, res) => {
   const id = parseInt(req.params.id);
-  let foundTodo = _.findWhere(todos, {id: id});
+  let foundTodo = _.findWhere(todos, {
+    id: id
+  });
   if (foundTodo) {
     return res.status(200).json(foundTodo);
   } else {
@@ -31,30 +49,45 @@ app.get('/todos/:id', (req, res) => {
 
 app.post('/todos', (req, res) => {
   let body = _.pick(req.body, 'description', 'completed');
-  console.log(body);
-  if (body.description && body.description.trim().length !== 0 && _.isBoolean(body.completed)) {
-    let todo  = {
-      id : todoNextId,
+  if (body.description &&
+    body.description.trim().length !== 0 &&
+    _.isBoolean(body.completed)) {
+    let todo = {
+      id: todoNextId,
       description: body.description,
       completed: body.completed
     };
     todos.push(todo);
     todoNextId++;
-    res.status(201).json({success:true, message: "todo added"});
-  }else{
-    res.status('400').json({success:false, message:"please add a description"});
+    res.status(201).json({
+      success: true,
+      message: "todo added"
+    });
+  } else {
+    res.status('400').json({
+      success: false,
+      message: "please add a description"
+    });
   }
 })
 
 app.delete('/todos/:id', (req, res) => {
   const id = parseInt(req.params.id);
-  let todo = _.findWhere(todos, {id: id});
+  let todo = _.findWhere(todos, {
+    id: id
+  });
   console.log(todo)
-  if(todo) {
+  if (todo) {
     todos = _.without(todos, todo);
-    res.status(200).json({success:true, message: "todo deleted"});
-  }else {
-    res.status(404).json({success:false, message: "todo with that is not found"});
+    res.status(200).json({
+      success: true,
+      message: "todo deleted"
+    });
+  } else {
+    res.status(404).json({
+      success: false,
+      message: "todo with that is not found"
+    });
   }
 })
 
@@ -62,20 +95,22 @@ app.delete('/todos/:id', (req, res) => {
 app.put('/todos/:id', (req, res) => {
   let id = parseInt(req.params.id);
   let body = _.pick(req.body, 'completed', 'description');
-  let matchedTodo = _.findWhere(todos, {id: id })
+  let matchedTodo = _.findWhere(todos, {
+    id: id
+  })
   let validAttributes = {}
 
-  if(!matchedTodo) {
+  if (!matchedTodo) {
     return res.status(404).json()
   }
-  if(body.hasOwnProperty('completed') && _.isBoolean(body.completed)) {
+  if (body.hasOwnProperty('completed') && _.isBoolean(body.completed)) {
     validAttributes.completed = body.completed;
-  }else if(body.hasOwnProperty(completed)) {
+  } else if (body.hasOwnProperty(completed)) {
     return res.status(400).json();
   }
-  if(_.isString(body.description) && body.description.trim() > 0) {
+  if (_.isString(body.description) && body.description.trim() > 0) {
     validAttributes.description = body.description;
-  }else if(body.hasOwnProperty('description')) {
+  } else if (body.hasOwnProperty('description')) {
     return res.status(400).json()
   }
   _.extend(matchedTodo, validAttributes);
