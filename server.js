@@ -20,8 +20,19 @@ app.get('/', (req, res) => {
 * gets all TOOO
 */
 app.get('/todos', (req, res) => {
-  let queryParams = req.query;
-  db.todo.findAll().then(function(todo) {
+  const query = req.query;
+  const where = {};
+  if (query.hasOwnProperty('completed') && query.completed === 'true') {
+    where.completed = true;
+  }else if(query.hasOwnProperty('completed') && query.completed === 'false') {
+    where.completed = false;
+  }
+  if (query.hasOwnProperty('q') && query.q.length > 0) {
+    where.description = {
+      $like : `%${query.q}%`
+    }
+  }
+  db.todo.findAll({where: where}).then(function(todo) {
     res.status(200).json(todo);
   })
 });
@@ -33,7 +44,6 @@ app.get('/todos/:id', (req, res) => {
   const id = parseInt(req.params.id);
   db.todo.findById(id)
     .then((todo) => {
-      console.log(todo)
       if(!todo) {
         return res.status(404).json({success: false, message: 'Todo Not found'})
       }
@@ -73,7 +83,6 @@ app.delete('/todos/:id', (req, res) => {
   let todo = _.findWhere(todos, {
     id: id
   });
-  console.log(todo)
   if (todo) {
     todos = _.without(todos, todo);
     res.status(200).json({
