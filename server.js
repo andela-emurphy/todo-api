@@ -1,6 +1,7 @@
 const app = require('express')(),
   bodyParser = require('body-parser'),
   _ = require('underscore'),
+  db = require('./db');
   port = process.env.PORT || 2000;
 
 let todos = [],
@@ -14,65 +15,48 @@ app.get('/', (req, res) => {
   res.send('</h1>Hello world</h1>');
 })
 
+
+/*
+* gets all TOOO
+*/
 app.get('/todos', (req, res) => {
   let queryParams = req.query;
-  let filteredtodos = todos
-  if (queryParams.hasOwnProperty('completed')) {
-    if( queryParams.completed === 'true') {
-      filteredtodos = _.where(filteredtodos, { completed: true });
-    } else if( queryParams.completed === 'false') {
-      filteredtodos = _.where(filteredtodos, { completed: false });
-    }
-  }
-  if (queryParams.hasOwnProperty('q')) {
-    filteredtodos = _.filter(filteredtodos, (todo) => {
-      if(todo.description.toLowerCase()
-        .indexOf(queryParams.q.toLowerCase()) > -1) {
-        return todo
-      }
-    })
-  }
-    res.status(200).json(filteredtodos);
-})
+  db.todo.findAll().then(function(todo) {
+    res.status(200).json(todo);
+  })
+});
 
-
-function test () {
-  if( queryParams.completed === 'true') {
-    filteredtodos = _.where(filteredtodos, { completed: true });
-  }
-}
-
+/*
+* gets a single TODO
+*/
 app.get('/todos/:id', (req, res) => {
   const id = parseInt(req.params.id);
-  let foundTodo = _.findWhere(todos, {
-    id: id
-  });
-  if (foundTodo) {
-    return res.status(200).json(foundTodo);
-  } else {
-    return res.status(404).json({
-      success: false,
-      message: 'todo with that id not found'
+  db.todo.findById(id)
+    .then((todo) => {
+      console.log(todo)
+      if(!todo) {
+        return res.status(404).json({success: false, message: 'Todo Not found'})
+      }
+      return res.status(200).json({ success: true, todo: todo});
+    }).catch((err) => {
+      return res.status(500).json(err);
     });
-  };
 })
 
+/*
+* creates a TOOO
+*/
 app.post('/todos', (req, res) => {
   let body = _.pick(req.body, 'description', 'completed');
-  if (body.description &&
-    body.description.trim().length !== 0 &&
-    _.isBoolean(body.completed)) {
-    let todo = {
-      id: todoNextId,
-      description: body.description,
-      completed: body.completed
-    };
-    todos.push(todo);
-    todoNextId++;
-    res.status(201).json({
-      success: true,
-      message: "todo added"
-    });
+  if (body.description && body.description.trim().length > 1 ) {
+    db.todo.create(body).then(function() {
+      res.status(201).json({
+        success: true,
+        message: "todo added"
+      });
+    }).catch(function(err) {
+      res.status(500).json(err.message);
+    })
   } else {
     res.status('400').json({
       success: false,
@@ -81,6 +65,9 @@ app.post('/todos', (req, res) => {
   }
 })
 
+/*
+* deletes a TOOO
+*/
 app.delete('/todos/:id', (req, res) => {
   const id = parseInt(req.params.id);
   let todo = _.findWhere(todos, {
@@ -101,7 +88,9 @@ app.delete('/todos/:id', (req, res) => {
   }
 })
 
-
+/*
+* Update a TOOO
+*/
 app.put('/todos/:id', (req, res) => {
   let id = parseInt(req.params.id);
   let body = _.pick(req.body, 'completed', 'description');
@@ -127,6 +116,8 @@ app.put('/todos/:id', (req, res) => {
   res.status(200).json(validAttributes);
 });
 
-app.listen(port, () => {
-  console.log('express is listening on port ' + port);
+db.sequelize.sync().then(function() {
+  app.listen(port, () => {
+    console.log('express is listening on port ' + port);
+  });
 });
