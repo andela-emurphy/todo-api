@@ -2,7 +2,7 @@ const app = require('express')(),
   bodyParser = require('body-parser'),
   _ = require('underscore'),
   db = require('./db');
-  port = process.env.PORT || 2000;
+port = process.env.PORT || 2000;
 
 let todos = [],
   todoNextId = 1;
@@ -16,116 +16,157 @@ app.get('/', (req, res) => {
 })
 
 
+
+app.post('/users', (req, res) => {
+  const body = _.pick(req.body, 'name', 'email', 'password')
+  db.user.create(body).then((user) => {
+    console.log(user.toString())
+    res.status(201).json({
+      success: true,
+      message: "user successfully created",
+      data:user  
+    });
+  }).catch((err) => {
+    res.status(400).json({
+        success: false,
+        error: err
+    });
+  });
+});
+
+
+
 /*
-* gets all TOOO
-*/
+ * gets all TOOO
+ */
 app.get('/todos', (req, res) => {
   const query = req.query;
   const where = {};
   if (query.hasOwnProperty('completed') && query.completed === 'true') {
     where.completed = true;
-  }else if(query.hasOwnProperty('completed') && query.completed === 'false') {
+  } else if (query.hasOwnProperty('completed') && query.completed === 'false') {
     where.completed = false;
   }
   if (query.hasOwnProperty('q') && query.q.length > 0) {
     where.description = {
-      $like : `%${query.q}%`
+      $like: `%${query.q}%`
     }
   }
-  db.todo.findAll({where: where}).then(function(todo) {
+  db.todo.findAll({
+    where: where
+  }).then((todo) => {
     res.status(200).json(todo);
   })
 });
 
 /*
-* gets a single TODO
-*/
+ * gets a single TODO
+ */
 app.get('/todos/:id', (req, res) => {
   const id = parseInt(req.params.id);
   db.todo.findById(id)
     .then((todo) => {
-      if(!todo) {
-        return res.status(404).json({success: false, message: 'Todo Not found'})
+      if (!todo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Todo Not found'
+        })
       }
-      return res.status(200).json({ success: true, todo: todo});
+      return res.status(200).json({
+        success: true,
+        todo: todo
+      });
     }).catch((err) => {
       return res.status(500).json(err);
     });
 })
 
 /*
-* creates a TOOO
-*/
+ * creates a TOOO
+ */
 app.post('/todos', (req, res) => {
-  let body = _.pick(req.body, 'description', 'completed');
-  if (body.description && body.description.trim().length > 1 ) {
-    db.todo.create(body).then(function() {
+  const body = _.pick(req.body, 'description', 'completed');
+  if (body.description && body.description.trim().length > 1) {
+    db.todo.create(body).then(() => {
       res.status(201).json({
         success: true,
         message: "todo added"
       });
-    }).catch(function(err) {
-      res.status(500).json(err.message);
+    }).catch((err) => {
+      res.status(500).json(err);
     })
   } else {
     res.status('400').json({
       success: false,
-      message: "please add a description"
+      error: "please add a description"
     });
   }
 })
 
 /*
-* deletes a TOOO
-*/
+ * deletes a TOOO
+ */
 app.delete('/todos/:id', (req, res) => {
   const id = parseInt(req.params.id);
-  let todo = _.findWhere(todos, {
-    id: id
-  });
-  if (todo) {
-    todos = _.without(todos, todo);
-    res.status(200).json({
-      success: true,
-      message: "todo deleted"
-    });
-  } else {
-    res.status(404).json({
+  db.todo.findById(id).then((todo) => {
+    if (todo) {
+      todo.destroy().then(() => {
+        res.status(200).json({
+          success: true,
+          message: "todo deleted"
+        });
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        error: 'Todo Not found'
+      });
+    }
+  }).catch((err) => {
+    res.status(500).json({
       success: false,
-      message: "todo with that is not found"
+      error: err
     });
-  }
+  })
 })
 
 /*
-* Update a TOOO
-*/
+ * Update a TOOO
+ */
 app.put('/todos/:id', (req, res) => {
-  let id = parseInt(req.params.id);
-  let body = _.pick(req.body, 'completed', 'description');
-  let matchedTodo = _.findWhere(todos, {
-    id: id
-  })
-  let validAttributes = {}
+  const id = parseInt(req.params.id);
+  const body = _.pick(req.body, 'completed', 'description');
+  let validAttributes = {};
 
-  if (!matchedTodo) {
-    return res.status(404).json()
-  }
   if (body.hasOwnProperty('completed') && _.isBoolean(body.completed)) {
     validAttributes.completed = body.completed;
-  } else if (body.hasOwnProperty(completed)) {
-    return res.status(400).json();
   }
-  if (_.isString(body.description) && body.description.trim() > 0) {
+  if (body.hasOwnProperty('description') &&
+    _.isString(body.description) && body.description.trim().length > 0) {
     validAttributes.description = body.description;
-  } else if (body.hasOwnProperty('description')) {
-    return res.status(400).json()
   }
-  _.extend(matchedTodo, validAttributes);
-  res.status(200).json(validAttributes);
+  db.todo.findById(id).then((todo) => {
+    if (todo) {
+      todo.update(validAttributes).then((todo) => {
+        res.status(200).json(todo);
+      }).catch((err) => {
+        res.status(400).json(err);
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        error: 'Todo Not found'
+      });
+    };
+  }).catch((err) => {
+    res.status(404).json({
+      success: false,
+      error: err
+    });
+  });
 });
 
-db.sequelize.sync().then(function() {
+db.sequelize.sync({ force : true }).then(() => {
   app.listen(port, () => {
     console.log('express is listening on port ' + port);
   });
